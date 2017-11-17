@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.airbnb.web.mapper.HKMapper">
+	<resultMap type="com.airbnb.web.command.ResultMap" id="ResiMap">
+		<id property="hostSerial" column="host_serial"/>
+		<result property="memberId" column="member_id"/>		
+		<result property="residenceName" column="residence_name"/>		
+		<result property="price" column="price"/>		
+		<result property="zipcode" column="zipcode"/>		
+		<result property="detailImg" column="detail_img"/>		
+		<result property="infoImg" column="info_img"/>		
+		<result property="resiContent" column="resi_content"/>		
+		<result property="addr" column="addr"/>		
+		<result property="limit" column="limit_no"/>		
+		<result property="revAvg" column="rev_avg"/>
+		<result property="solddays" column="solddays"/>
+		<result property="disable" column="disable"/>
+		<!-- resiopt -->
+		<result property="wifi" column="wifi"/>		
+		<result property="bedNum" column="bed_num"/>		
+		<result property="pet" column="pet"/>		
+		<result property="essentialItem" column="essential_item"/>		
+		<result property="parking" column="parking"/>		
+		<result property="bathroomNum" column="bathroom_num"/>		
+		<result property="tv" column="tv"/>		
+		<result property="washingMac" column="washing_mac"/>		
+		<result property="airCondi" column="Air_condi"/>		
+		<result property="kitchen" column="kitchen"/>
+		<!-- resevation -->
+		<result property="rsvSeq" column="wifi"/>
+		<result property="checkin" column="wifi"/>
+		<result property="checkout" column="wifi"/>
+		<result property="adult" column="wifi"/>
+		<result property="teen" column="wifi"/>
+		<result property="child" column="wifi"/>
+		<result property="resPrice" column="resPrice"/>
+		
+		<result property="boardSeq" column="board_seq"></result>
+		<result property="hostSerial" column="host_serial"></result>
+		<result property="reviewStar" column="review_star"></result>		
+		<result property="contents" column="board_content"></result>		
+		<result property="regdate" column="board_regdate"></result>		
+		<result property="rownum" column="ROWNUM"></result>		
+	</resultMap>
+	
+	<insert id="insert"
+		parameterType="com.airbnb.web.command.Command">
+		
+		 <choose>
+            <when test="cate == 'rev'">
+                INSERT INTO reservation 
+				VALUES(#{view}, #{dir}, #{action}, sysdate(), #{column}, #{search}, #{startRow}, #{endRow}, #{serial}, #{pageNumber}, #{page})
+            </when>
+            <when test="cate == 'resi'">
+	            <choose>
+		            <when test="common == 'residence'">
+		                INSERT INTO residence(member_id, residence_name, price, zipcode, host_serial, resi_content, addr, limit_no, detail_img, info_img)
+			            VALUES(#{view}, #{dir}, #{action}, #{column}, #{search}, #{startRow}, #{endRow}, #{page}, './resources/img/airTest.jpg', './resources/img/airTest.jpg')
+		            </when>
+		            <when test="common == 'resiopt'">
+			            INSERT INTO resiopt (wifi, bed_num, pet, essential_item, parking, bathroom_num, tv, washing_mac, Air_condi, kitchen, host_serial)
+			            VALUES(#{view}, #{dir}, #{action}, #{column}, #{search}, #{startRow}, #{endRow}, #{page}, #{pageNumber}, #{kitchen}, #{serial})
+		            </when>
+		         </choose>   
+            </when>
+         </choose>
+	</insert>
+		
+	<select id="selectList"
+		resultMap="ResiMap" 
+		parameterType="com.airbnb.web.command.Command">
+		
+		<if test="action != null">
+         <choose>
+            <when test="action == 'revList'">
+               SELECT b.board_seq, b.board_content, b.board_regdate, b.member_id, rb.host_serial, 
+                   (SELECT TRUNCATE(review_star,0) as revavg 
+                    FROM reviewboard 
+                    WHERE host_serial LIKE #{search}
+                    GROUP BY host_serial) AS rev_avg
+	            FROM board b 
+	            JOIN reviewboard rb ON b.board_seq = rb.board_seq 
+            WHERE rb.host_serial LIKE #{search}
+            </when>
+            <when test="action == 'revsearch'">
+	            SELECT * 
+	            FROM board b JOIN reviewboard rb ON b.board_seq = rb.board_seq 
+	            WHERE rb.host_serial LIKE #{search} AND b.board_content LIKE '%${dir}%'   
+            </when>
+            <when test="action == 'disableDate'">
+	            SELECT DATE_FORMAT(checkin,'%Y-%m-%d') AS disable, solddays 
+	            FROM reservation 
+	            WHERE host_serial LIKE #{search}
+            </when>
+            <when test="action == 'allRegSelect'">
+	            SELECT *
+				FROM (SELECT @NO := @NO + 1 AS ROWNUM, A.*
+					FROM(SELECT * FROM residence WHERE addr LIKE '%${search}%') A, ( SELECT @NO := 0 ) B 
+				)C
+				WHERE C.ROWNUM BETWEEN '${startRow}' AND '${endRow}'
+            </when>
+         </choose>
+      </if>      
+	</select>
+   
+	<select id="selectOne"
+		resultMap="ResiMap" 
+		parameterType="com.airbnb.web.command.Command">
+		SELECT * 
+		FROM residence r JOIN resiopt o ON r.host_serial LIKE o.host_serial 
+		WHERE r.host_serial LIKE #{search}
+	</select>
+	
+	<select id="count"
+		resultType="string"
+		parameterType="com.airbnb.web.command.Command">
+		<choose>
+            <when test="action == 'revList'">  
+				SELECT COUNT(*) 
+				FROM board b JOIN reviewboard rb ON b.board_seq = rb.board_seq 
+				WHERE rb.host_serial LIKE #{search};
+			</when>
+			<when test="action == 'allRegSelect'">  
+				SELECT COUNT(*) 
+				FROM residence 
+				WHERE addr LIKE '%${search}%';
+			</when>
+		</choose>
+	</select>
+
+	<update id="update">
+	</update>
+	
+	<delete id="delete">
+	</delete>
+	
+</mapper>

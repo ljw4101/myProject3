@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.airbnb.web.mapper.JYMapper">
+
+	<insert id="insert" parameterType="com.airbnb.web.domain.Reservation">
+		INSERT INTO reservation (
+			member_id,
+			host_serial,
+			res_price,
+		   	rsv_seq,
+		   	checkin,
+		   	checkout,
+		   	regdate,
+		   	solddays
+		) 
+		VALUES (
+			#{memberId},
+			#{hostSerial},
+			#{resPrice},
+			#{rsvSeq},
+			#{checkin},
+			#{checkout},
+			now(),
+			#{solddays}
+		);
+	</insert>
+
+	<select id="selectList" resultType="com.airbnb.web.domain.Residence">
+		SELECT member_id AS memberId,
+		       residence_name AS residenceName,
+		       price,
+		       zipcode,
+		       host_serial AS hostSerial,
+		       detail_img AS detailImg,
+			   resi_content AS regiContent,
+			   addr,
+		       info_img AS infoImg,
+		       limit_no AS limitNo
+		FROM residence;
+	</select>
+	
+	<select id="selectOne" resultType="com.airbnb.web.domain.Member" parameterType="com.airbnb.web.domain.Member">
+		SELECT 
+			member_id AS memberId,
+			member_password AS MemberPassword,
+			name
+		FROM 
+			member
+		WHERE 
+			member_id = #{memberId} AND member_password = #{memberPassword};
+	</select>
+	
+	<select id="count" resultType="String">
+		SELECT COUNT(*) FROM residence;
+	</select>
+</mapper>

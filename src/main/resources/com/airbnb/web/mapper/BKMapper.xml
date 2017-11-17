@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.airbnb.web.mapper.BKMapper">
+	<resultMap type="com.airbnb.web.command.ResultMap" id="ResiMap">
+    	<id property="rsvSeq" column="rsv_seq"/>
+      	<result property="residenceName" column="residence_name"/>      
+      	<result property="name" column="name"/>      
+      	<result property="hostSerial" column="host_serial"/>      
+      	<result property="checkin" column="checkin"/>      
+  	  	<result property="checkout" column="checkout"/>
+   	</resultMap>
+	<insert id="insert" parameterType="com.airbnb.web.command.Command">
+		INSERT INTO member (member_id, member_password, name, regdate, birthdate) 
+		VALUES (#{action}, #{column}, #{dir}, now(), #{pageNumber})
+	</insert>
+		
+	<select id="selectSearch" resultType="com.airbnb.web.domain.Member" parameterType="com.airbnb.web.command.Command">
+		SELECT member_id AS memberId , member_password AS memberPassword, name, regdate, birthdate, member_role AS memberRole 
+		FROM member 
+		WHERE member_id = #{action} 
+	</select>
+		
+	<select id="selectOne" resultType="com.airbnb.web.domain.Member" parameterType="com.airbnb.web.command.Command">
+		SELECT member_id AS memberId , member_password AS memberPassword, name, regdate, birthdate, member_role AS memberRole 
+		FROM member 
+		WHERE member_id = #{action} 
+	 	AND member_password = #{column}
+	</select>
+	
+	<update id="update" parameterType="com.airbnb.web.command.Command">
+		UPDATE member SET name = #{column} WHERE member_id = #{action} 
+	</update>
+	
+	<delete id="deleteId" parameterType="com.airbnb.web.command.Command"> 
+		DELETE FROM member WHERE member_id = #{action}
+	</delete>
+	
+	<delete id="deleteRes" parameterType="com.airbnb.web.command.Command"> 
+		DELETE FROM residence WHERE member_id = #{action}
+	</delete>
+	
+	<select id="selectList" resultMap="ResiMap" parameterType="com.airbnb.web.command.Command">
+		SELECT reservation.rsv_seq, reservation.host_serial, residence.residence_name, reservation.checkin, reservation.checkout, m.name, m.member_id  
+		FROM reservation ,member m, residence
+		WHERE  reservation.member_id =  m.member_id
+	    AND reservation.host_serial = residence.host_serial
+		AND m.member_id = #{action} 
+	</select>
+	
+	<delete id="deleterev"  parameterType="com.airbnb.web.command.Command"> 
+      DELETE FROM reservation WHERE rsv_seq = #{search}
+   </delete>
+</mapper>

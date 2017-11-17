@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.airbnb.web.mapper.JWMapper">
+	<resultMap id="respMap" type="com.airbnb.web.command.ResultMap" >
+		<id property="boardSeq" column="board_seq" />
+		<result property="rowNum" column="row_num" />
+		<result property="title" column="board_title"/>
+		<result property="contents" column="board_content"/>
+		<result property="regdate" column="board_regdate"/>
+		<result property="cateName" column="cate_name"/>
+		<result property="cateLevel" column="cate_level"/>
+		<result property="cateSeq" column="cate_seq"/>
+		<result property="date" column="date"/>
+		<result property="sale" column="sale"/>
+		<result property="gender" column="gender"/>
+		<result property="memberId" column="member_id"/>
+		<result property="hostSerial" column="host_serial"/>
+		<result property="residenceName" column="residence_name"/>
+		<result property="infoImg" column="info_img"/>
+		<result property="totalCnt" column="total_cnt" />
+		<result property="rsvSeq" column="rsv_seq"/>
+		<result property="checkin" column="checkin"/>
+		<result property="checkout" column="checkout"/>
+		<result property="addr" column="addr" />
+		<result property="price" column="price"/>
+		<result property="zipcode" column="zipcode"/>
+		<result property="detailImg" column="detailImg" />
+		<result property="limitNo" column="limit_no" /> 
+		
+		<result property="totalMember" column="total_mem" />
+		<result property="totalHost" column="total_host" /> 
+	</resultMap>
+	
+    <insert id="insert" parameterType="com.airbnb.web.command.Command">
+    	<if test="dir != null">
+    		<choose>
+    			<when test="dir == 'board'">
+    				INSERT INTO ${dir} (board_seq, board_title, board_content, board_regdate, member_id)
+    				VALUES (#{pageNumber}, #{page}, #{view}, sysdate() ,'admin')
+    			</when>
+    			<when test="dir == 'boardcate'">
+    				INSERT INTO ${dir} (cate_seq, board_seq, cate_name, cate_level)
+    				VALUES (#{search}, #{pageNumber}, #{view}, #{page})
+    			</when>
+    		</choose>
+    	</if>
+	</insert>
+	
+	<select id="chartgeo" resultType="com.airbnb.web.command.ResultMap" parameterType="com.airbnb.web.command.Command">
+		SELECT t.area as colArea, count(t.host_serial) as colCount
+		FROM(
+		  SELECT SUBSTRING_INDEX(b.addr, ' ', 1) area, host_serial 
+		  FROM residence b
+		) t
+		GROUP BY t.area
+	</select>
+	
+	<select id="chartCol" resultType="com.airbnb.web.command.ResultMap" parameterType="com.airbnb.web.command.Command">
+		SELECT t.sal_month as colMonth
+		     , SUM(yy_sales) as blyearSales
+		     , SUM(y_sales) as lyearSales
+		     , SUM(sales) as tyearSales
+		FROM (
+		  SELECT MONTH(date) sal_month, sale yy_sales, 0 y_sales, 0 sales
+		  FROM accumulate
+		  WHERE YEAR(date) = YEAR(CURDATE())-2
+		  union all 
+		  SELECT MONTH(date) sal_month, 0 yy_sales, sale y_sales, 0 sales
+		  FROM accumulate
+		  WHERE YEAR(date) = YEAR(CURDATE())-1
+		  union all 
+		  SELECT MONTH(date) sal_month, 0 yy_sales, 0 y_sales, sale sales
+		  FROM accumulate
+		  WHERE YEAR(date) = YEAR(CURDATE())
+		  union all
+		  SELECT MONTH(regdate) sal_month, 0 yy_sales, 0 y_sales, TRUNCATE(SUM(res_price)/100,0) sales 
+		  FROM reservation
+		  WHERE YEAR(regdate) = YEAR(CURDATE())
+		  GROUP BY YEAR(regdate), MONTH(regdate)
+		) t
+		GROUP BY t.sal_MONTH
+	</select>
+	
+	<select id="chartLine" resultType="com.airbnb.web.command.ResultMap" parameterType="com.airbnb.web.command.Command">
+		SELECT  YEAR(regdate) as colYear, COUNT(member_id) as colCount
+		FROM member
+		WHERE YEAR(regdate) > YEAR(DATE_ADD(NOW(), interval -4 year))
+		GROUP BY YEAR(regdate)
+	</select>
+	
+	
+	<select id="comboList" resultMap="respMap" parameterType="com.airbnb.web.command.Command">
+		SELECT cate_level, cate_name FROM boardcate
+		WHERE board_seq = '0';
+	</select>
+	
+	
+	<select id="selectList" resultMap="respMap" parameterType="com.airbnb.web.command.Command">
+		<if test="dir != null">
+			<choose>
+				<when test="dir == 'board'">
+					SELECT t.* FROM(
+						SELECT (@ROWNUM := @ROWNUM + 1) row_num
+							 , (select count(*) from vboard) as total_cnt 
+							 , board_seq, cate_name, board_title, board_regdate
+						FROM vboard, (SELECT @ROWNUM := 0) AS y
+						WHERE( board_title LIKE #{search} 
+		   					   OR cate_name LIKE #{search})
+						ORDER BY board_regdate DESC
+					)t
+					<!-- WHERE row_num BETWEEN ${startRow} and ${endRow}; -->
+				</when>
+				<when test="dir == 'residence'">
+					SELECT * FROM ${dir}
+					WHERE residence_name LIKE #{search}
+					OR member_id LIKE #{search}
+					ORDER BY residence_name
+				</when>
+				<when test="dir == 'rsvList'">
+					SELECT r.rsv_seq, x.residence_name, x.addr
+						, DATE_FORMAT(r.checkin,'%Y-%m-%d') checkin 
+						, DATE_FORMAT(r.checkout,'%Y-%m-%d') checkout 
+						, (r.adult+r.teen+r.child) total_cnt
+						, DATE_FORMAT(r.regdate,'%Y-%m-%d') regdate 
+						, x.member_id
+						,x.host_serial
+					FROM member m, reservation r, residence x
+					WHERE m.member_id = r.member_id
+					AND r.host_serial = x.host_serial
+					AND m.member_id = #{search}
+					;
+				</when>
+				<when test="dir == 'hresiList'">
+					SELECT * FROM residence
+  					WHERE member_id = #{search};
+				</when>
+			</choose>
+		</if>		
+	</select>
+   
+   
+	<select id="selectOne" resultMap="respMap" parameterType="com.airbnb.web.command.Command">
+		<if test="dir != null">
+			<choose>
+				<when test="dir == 'board'">
+					SELECT b.board_seq, c.cate_name, b.board_title, b.board_content
+					FROM ${dir} b 
+					LEFT OUTER JOIN boardcate c ON b.board_seq = c.board_seq
+					WHERE b.${column} = #{search};
+				</when>
+				<when test="dir == 'dashboard'">
+					SELECT SUM(aa) row_num, SUM(bb) total_cnt, SUM(cc) sale, SUM(dd) limit_no
+					FROM (
+						  SELECT COUNT(*) as aa, 0 bb, 0 cc, 0 dd
+						  FROM member
+						  UNION ALL
+						  SELECT 0 aa, t.bb, 0 cc, 0 dd 
+						  FROM(
+							    SELECT DISTINCT COUNT(member_id) as bb
+							    FROM residence
+						  )t
+						  UNION ALL
+						  SELECT 0 aa, 0 bb, t.cc, 0 dd 
+						  FROM(
+							    SELECT IFNULL(SUM(res_price),0) as cc FROM reservation
+							    WHERE DATE_FORMAT(regdate,'%Y-%m-%d') = DATE_FORMAT(SYSDATE(),'%Y-%m-%d')
+						  ) t
+						  UNION ALL
+						  SELECT 0 aa, 0 bb, 0 cc, SUM(t.dd) as dd 
+						  FROM(
+							    SELECT IFNULL(SUM(res_price),0) as dd FROM reservation
+							    WHERE YEAR(regdate) = YEAR(SYSDATE())
+				                UNION ALL
+				                SELECT SUM(sale) as dd FROM accumulate
+				            	WHERE YEAR(date) = YEAR(CURDATE())
+					  	  ) t
+					) m
+				</when>
+			</choose>
+		</if>
+	</select>
+	
+	
+	<select id="count" resultMap="respMap" parameterType="com.airbnb.web.command.Command">  
+		SELECT COUNT(*) AS row_cont FROM vboard;
+	</select>
+
+
+	<update id="update" parameterType="com.airbnb.web.command.Command">
+		<if test="dir != null">
+    		<choose>
+    			<when test="dir == 'board'">
+    				UPDATE ${dir} SET board_title = #{page}
+    								, board_content = #{view}
+    								, board_regdate = sysdate()
+    				WHERE board_seq = #{pageNumber};
+    			</when>
+    			<when test="dir == 'boardcate'">
+    				UPDATE ${dir} SET cate_level = #{page}
+    								, cate_name = #{view}
+    				WHERE board_seq = #{pageNumber};
+    			</when>
+    		</choose>
+    	</if>
+	</update>
+	
+	
+	<delete id="delete" parameterType="com.airbnb.web.command.Command">
+		<if test="dir != null">
+			DELETE FROM ${dir}
+    		<choose>
+    			<when test="dir == 'board'">
+					WHERE board_seq = #{search}
+    			</when>
+    			<when test="dir == 'boardcate'">
+    				WHERE board_seq = #{search}
+    			</when>
+    			<when test="dir == 'residence'">
+					WHERE host_serial = #{search}
+    			</when>
+    			<when test="dir == 'reservation'">
+					WHERE rsv_seq = #{search}
+    			</when>
+    		</choose>
+    	</if>	
+	</delete>
+</mapper>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.airbnb.web.mapper.HYMapper">
+	<resultMap type="com.airbnb.web.command.ResultMap" id="ResiMap">
+	      <id property="hostSerial" column="host_serial"/>
+	      <result property="infoImg" column="info_img"/>
+	      <result property="price" column="price"/>      
+	      <result property="residenceName" column="residence_name"/>      
+   	</resultMap>
+    <insert id="insertBoard" parameterType="com.airbnb.web.domain.Board">
+		INSERT INTO board (
+		   board_seq
+		  ,board_content
+		  ,board_regdate
+		  ,member_id		  
+		) VALUES (#{boardSeq},#{contents},now(),#{memberId})
+	</insert>
+	   <insert id="insertReviewBoard" parameterType="com.airbnb.web.domain.ReviewBoard">
+		INSERT INTO reviewboard (
+		   board_seq
+		  ,review_star
+		  ,host_serial
+		) VALUES (#{boardSeq},#{reviewStar},#{hostSerial})
+	</insert>
+	
+
+	<select id="selectList" parameterType="com.airbnb.web.command.Command" resultMap="ResiMap">
+		SELECT host_serial, info_img,price,residence_name FROM residence
+	  	<if test="action != null">
+		    WHERE addr like '%${action}%'
+		</if> 
+	</select>
+</mapper>
